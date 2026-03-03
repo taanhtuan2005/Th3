@@ -29,172 +29,37 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('TH3 - Tạ Anh Tuấn - 2351060494'),
-        backgroundColor: Colors.indigo[900], // Professional Blue
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: _showCompInfo,
-          ),
-        ],
-      ),
+      backgroundColor: Colors.grey[100], // Light grey background
       body: FutureBuilder<List<Article>>(
         future: _futureArticles,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.redAccent,
-                      size: 60,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Lỗi kết nối: ${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _fetchData,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo[900],
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return _buildErrorState(snapshot.error);
           } else if (snapshot.hasData) {
             final articles = snapshot.data!;
             if (articles.isEmpty) {
-              return const Center(child: Text('Không có tin tức nào.'));
+              return const Center(child: Text('Empty Feed'));
             }
             return RefreshIndicator(
               onRefresh: () async => _fetchData(),
-              child: ListView.builder(
-                padding: const EdgeInsets.all(10),
-                itemCount: articles.length,
-                itemBuilder: (context, index) {
-                  final article = articles[index];
-                  // If image URL is missing, try to substitute or hide
-                  final bool hasImage = article.imageUrl.isNotEmpty;
-
-                  return Card(
-                    elevation: 3,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: CustomScrollView(
+                slivers: [
+                  _buildSliverAppBar(),
+                  if (articles.isNotEmpty) _buildFeaturedItem(articles.first),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        // Skip the first item as it is featured
+                        final article = articles[index + 1];
+                        return _buildArticleItem(article);
+                      }, childCount: articles.length - 1),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ArticleDetailScreen(article: article),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (hasImage)
-                            Image.network(
-                              article.imageUrl,
-                              height: 180,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    height: 180,
-                                    color: Colors.grey[200],
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.image_not_supported,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.indigo.shade50,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        article.source,
-                                        style: TextStyle(
-                                          color: Colors.indigo.shade900,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      _formatDate(article.pubDate),
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  article.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    height: 1.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  article.description,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.grey[800],
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 30)),
+                ],
               ),
             );
           }
@@ -204,23 +69,323 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSliverAppBar() {
+    return SliverAppBar(
+      expandedHeight: 120.0,
+      floating: true,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: Colors.indigo[900],
+      flexibleSpace: FlexibleSpaceBar(
+        title: const Text(
+          'TH3 - Tạ Anh Tuấn - 2351060494',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+        centerTitle: true,
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80',
+              fit: BoxFit.cover,
+            ),
+            Container(color: Colors.black45),
+          ],
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: _showCompInfo,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeaturedItem(Article article) {
+    return SliverToBoxAdapter(
+      child: GestureDetector(
+        onTap: () => _navigateToDetail(article),
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          height: 240,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.indigo.withOpacity(0.2),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+            image: DecorationImage(
+              image: NetworkImage(article.imageUrl),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: Stack(
+            children: [
+              // Gradient Overlay
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.9)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.5, 1.0],
+                  ),
+                ),
+              ),
+              // Content
+              Positioned(
+                bottom: 20,
+                left: 20,
+                right: 20,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'FEATURED',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      article.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _formatDate(article.pubDate),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArticleItem(Article article) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _navigateToDetail(article),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Image
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+                child: Image.network(
+                  article.imageUrl,
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 120,
+                    height: 120,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
+                ),
+              ),
+              // Right Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.public,
+                            size: 12,
+                            color: Colors.indigo[300],
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              article.source,
+                              style: TextStyle(
+                                color: Colors.indigo[300],
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        article.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatDate(article.pubDate),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(Object? error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.signal_wifi_off, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 20),
+            Text(
+              'Connection Lost',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Please check your internet connection.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _fetchData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo[900],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 5,
+                ),
+                child: const Text(
+                  'RETRY',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToDetail(Article article) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArticleDetailScreen(article: article),
+      ),
+    );
+  }
+
   void _showCompInfo() {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('About Us'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: const <Widget>[
-                Text('Global Space News App'),
-                SizedBox(height: 8),
-                Text('Provider: Spaceflight News API'),
-                Text('Version: 1.0.0'),
-                SizedBox(height: 8),
-                Text('Contact: student@university.edu.vn'),
-              ],
-            ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          title: Row(
+            children: const [
+              Icon(Icons.rocket, color: Colors.indigo),
+              SizedBox(width: 10),
+              Text('About App'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Space News Aggregator',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text('Data provided by Spaceflight News API v4.'),
+              Divider(height: 30),
+              Text('Student: Tạ Anh Tuấn', style: TextStyle(fontSize: 13)),
+              Text('ID: 2351060494', style: TextStyle(fontSize: 13)),
+            ],
           ),
           actions: [
             TextButton(
@@ -233,14 +398,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // RSS pubDate format: "yyyy-MM-dd HH:mm:ss" or RFC822
   String _formatDate(String dateString) {
     if (dateString.isEmpty) return '';
     try {
       DateTime date = DateTime.parse(dateString);
-      return '${date.day}/${date.month} ${date.hour}:${date.minute}';
+      // Simple format
+      return '${date.day}-${date.month}-${date.year}';
     } catch (e) {
-      return dateString; // Return original if parse fails
+      return '';
     }
   }
 }
