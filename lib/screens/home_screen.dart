@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/article_model.dart';
 import '../services/api_service.dart';
 import 'detail_screen.dart';
+import '../utils/search_delegate.dart'; // Import search delegate
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -99,8 +100,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       actions: [
         IconButton(
+          icon: const Icon(Icons.search),
+          onPressed: () {
+            showSearch(context: context, delegate: NewsSearchDelegate());
+          },
+        ),
+        IconButton(
           icon: const Icon(Icons.info_outline),
-          onPressed: _showCompInfo,
+          onPressed: _showCompInfo, // Existing info button
         ),
       ],
     );

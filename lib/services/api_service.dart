@@ -5,13 +5,18 @@ import 'dart:developer' as developer;
 
 class ApiService {
   // Public Spaceflight News API (International)
-  // No API Key required, provides English content
   static const String _baseUrl =
-      'https://api.spaceflightnewsapi.net/v4/articles/?limit=20';
+      'https://api.spaceflightnewsapi.net/v4/articles/';
 
-  Future<List<Article>> fetchArticles() async {
+  Future<List<Article>> fetchArticles({String query = ''}) async {
     try {
-      final response = await http.get(Uri.parse(_baseUrl));
+      String url = '$_baseUrl?limit=20';
+      if (query.isNotEmpty) {
+        // Use multiple filters or just title_contains as it is most reliable
+        url += '&title_contains=$query';
+      }
+
+      final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(

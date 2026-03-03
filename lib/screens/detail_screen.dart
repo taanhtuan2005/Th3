@@ -10,9 +10,11 @@ class ArticleDetailScreen extends StatelessWidget {
 
   Future<void> _launchUrl() async {
     final Uri url = Uri.parse(article.link);
+
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
         developer.log('Could not launch $url');
+        // Fallback or show snackbar
       }
     } catch (e) {
       developer.log('Error launching URL: $e');
